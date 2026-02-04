@@ -1,4 +1,4 @@
-rootProject.name = "wordme"
+rootProject.name = "wordme-server"
 
 dependencyResolutionManagement {
     repositories {
