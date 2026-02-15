@@ -1,0 +1,12 @@
+ktor:
+    application:
+        modules:
+            - app.ApplicationKt.module
+    deployment:
+        port: 8081
+
+wordme:
+  words_db:
+    path: "data/words.db"
+  ids_db:
+    path: "data/ids.db"

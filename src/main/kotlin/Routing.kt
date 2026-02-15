@@ -1,16 +1,34 @@
 package app
 
+import app.repository.WordsRepository
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     routing {
-        get("/") {
-            call.respondText("Hello World!")
+        route("/health") {
+
+            get {
+                call.respondText("OK")
+            }
+
+            head {
+                call.respond(HttpStatusCode.OK)
+            }
         }
-        get("/wordme_test") {
-            call.respondText("Hello World!")
+
+        get("/dayWord") {
+            val dayWordId = call.request.queryParameters["randomWordId"]?.toInt() ?: 0
+
+            call.respond(WordsRepository.getDayWord(dayWordId))
+        }
+
+        get("/isWordExist") {
+            val enteredWord = call.request.queryParameters["enteredWord"].orEmpty()
+
+            call.respond(WordsRepository.isWordExist(enteredWord))
         }
     }
 }
