@@ -14,28 +14,25 @@ internal object IdsDatabaseFactory {
             .property("wordme.ids_db.path")
             .getString()
 
-        val jdbcUrl = "jdbc:sqlite:$dbPath"
-
-        Class.forName("org.sqlite.JDBC")
-        connection = DriverManager.getConnection(jdbcUrl)
+        connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
     }
 
     fun getCount(): Int {
-        val stmt = connection.createStatement()
-        val rs = stmt.executeQuery("SELECT COUNT(*) FROM id")
-        val count = rs.getInt(1)
-        rs.close()
-        stmt.close()
-        return count
+        return connection.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT COUNT(*) FROM id").use { rs ->
+                rs.next()
+                rs.getInt(1)
+            }
+        }
     }
 
     fun getDayId(id: Int): Int {
-        val stmt = connection.prepareStatement("SELECT wordId FROM id WHERE id = ?")
-        stmt.setInt(1, id)
-        val rs = stmt.executeQuery()
-        val wordId = rs.getInt("wordId")
-        rs.close()
-        stmt.close()
-        return wordId
+        return connection.prepareStatement("SELECT wordId FROM id WHERE id = ?").use { stmt ->
+            stmt.setInt(1, id)
+            stmt.executeQuery().use { rs ->
+                rs.next()
+                rs.getInt("wordId")
+            }
+        }
     }
 }

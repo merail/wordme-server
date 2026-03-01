@@ -16,30 +16,26 @@ internal object WordsDatabaseFactory {
             .property("wordme.words_db.path")
             .getString()
 
-        val jdbcUrl = "jdbc:sqlite:$dbPath"
-
-        Class.forName("org.sqlite.JDBC")
-        connection = DriverManager.getConnection(jdbcUrl)
+        connection = DriverManager.getConnection("jdbc:sqlite:$dbPath")
     }
 
     fun getDayWord(id: Int): WordDto {
-        val stmt = connection.prepareStatement("SELECT * FROM word WHERE id = ?")
-        stmt.setInt(1, id)
-        val rs = stmt.executeQuery()
-        val word = rs.toWordDto()
-        rs.close()
-        stmt.close()
-        return word
+        return connection.prepareStatement("SELECT * FROM word WHERE id = ?").use { stmt ->
+            stmt.setInt(1, id)
+            stmt.executeQuery().use { rs ->
+                rs.next()
+                rs.toWordDto()
+            }
+        }
     }
 
     fun isWordExist(word: String): WordDto? {
-        val stmt = connection.prepareStatement("SELECT * FROM word WHERE word = ?")
-        stmt.setString(1, word)
-        val rs = stmt.executeQuery()
-        val result = if (rs.next()) rs.toWordDto() else null
-        rs.close()
-        stmt.close()
-        return result
+        return connection.prepareStatement("SELECT * FROM word WHERE word = ?").use { stmt ->
+            stmt.setString(1, word)
+            stmt.executeQuery().use { rs ->
+                if (rs.next()) rs.toWordDto() else null
+            }
+        }
     }
 
     private fun ResultSet.toWordDto() = WordDto(

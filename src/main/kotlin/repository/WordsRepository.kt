@@ -15,7 +15,7 @@ internal object WordsRepository {
         }
 
         val dayWordId = IdsDatabaseFactory.getDayId(
-            id = (randomWordId  + totalBias) % totalCount,
+            id = (randomWordId + totalBias) % totalCount,
         )
 
         return WordsDatabaseFactory.getDayWord(dayWordId).word

@@ -30,5 +30,12 @@ fun Application.configureRouting() {
 
             call.respond(WordsRepository.isWordExist(enteredWord))
         }
+
+        get("/gameCountdownStartDate") {
+            val date = application.environment.config
+                .property("wordme.game_countdown_start_date")
+                .getString()
+            call.respondText(date)
+        }
     }
 }
