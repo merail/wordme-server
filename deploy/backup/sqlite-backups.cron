@@ -1,0 +1,1 @@
+30 3 * * * root /opt/wordme/backup_sqlite.sh >> /var/log/sqlite-backups.log 2>&1

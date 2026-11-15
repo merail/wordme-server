@@ -1,0 +1,12 @@
+[Unit]
+Description=Wordme Ktor Backend
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/wordme/app
+ExecStart=/usr/bin/java -jar wordme.jar
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
