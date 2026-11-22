@@ -1,39 +1,81 @@
-# wordme
+# wordme-server
 
-This project was created using the [Ktor Project Generator](https://start.ktor.io).
+Backend server for **[WordMe](https://github.com/merail/wordme)** — a native Android daily word game (Russian, 5-letter words, 6 attempts). The server stores the word list, maps each calendar day to a word, and exposes the endpoints the app uses to fetch the day's word and validate entered words.
 
-Here are some useful links to get you started:
+## Overview
 
-- [Ktor Documentation](https://ktor.io/docs/home.html)
-- [Ktor GitHub page](https://github.com/ktorio/ktor)
-- The [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). You'll need to [request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up) to join.
+- Kotlin/JVM, built on [Ktor](https://ktor.io) (Netty engine) with `kotlinx.serialization`.
+- Two SQLite databases:
+  - `words.db` — the words (`word(id, word, isUndesirable)`);
+  - `ids.db` — a shuffled day → word mapping (`id(id, wordId)`).
+- Day gating: a word is served only after its day has started, using the earliest time zone (UTC+14) plus a 5-minute clock-skew allowance, so no honest player is ever rejected early.
+- Runs behind nginx in production; Ktor itself listens only on `127.0.0.1:8081`. Token checks are done by nginx, not the app.
 
-## Features
+## Endpoints
 
-Here's a list of features included in this project:
+| Route | Response |
+|-------|----------|
+| `GET /health` (and `HEAD`) | `200 OK` |
+| `GET /dayWord?randomWordId=<n>` | JSON string — the day's word; `403 Forbidden` if the day hasn't started and no debug header is set |
+| `GET /isWordExist?enteredWord=<word>` | JSON boolean |
+| `GET /gameCountdownStartDate` | Plain text `14.07.2025` |
 
-| Name                                               | Description                                                 |
-| ----------------------------------------------------|------------------------------------------------------------- |
-| [Routing](https://start.ktor.io/p/routing-default) | Allows to define structured routes and associated handlers. |
+Without a valid `X-WordMe-Token` header, nginx returns `403` for `/dayWord`, `/gameCountdownStartDate` and `/isWordExist`. The `X-WordMe-Debug: 1` header (set by nginx only for a valid debug token) lets `/dayWord` return future day words.
 
-## Building & Running
+## Requirements
 
-To build or run the project, use one of the following tasks:
+- JDK 17+ (the Gradle wrapper downloads Gradle 9.3.0).
 
-| Task                                    | Description                                                          |
-| -----------------------------------------|---------------------------------------------------------------------- |
-| `./gradlew test`                        | Run the tests                                                        |
-| `./gradlew build`                       | Build everything                                                     |
-| `./gradlew buildFatJar`                 | Build an executable JAR of the server with all dependencies included |
-| `./gradlew buildImage`                  | Build the docker image to use with the fat JAR                       |
-| `./gradlew publishImageToLocalRegistry` | Publish the docker image locally                                     |
-| `./gradlew run`                         | Run the server                                                       |
-| `./gradlew runDocker`                   | Run using the local docker image                                     |
+## Build & run
 
-If the server starts successfully, you'll see the following output:
+```bash
+./gradlew test                          # Run the tests
+./gradlew build                         # Build everything
+./gradlew buildFatJar                   # Executable fat jar (build/libs/wordme-server-all.jar)
+./gradlew buildImage                    # Build the Docker image for the fat jar
+./gradlew publishImageToLocalRegistry   # Publish the Docker image locally
+./gradlew run                           # Run the server
+./gradlew runDocker                     # Run using the local Docker image
+```
+
+On a successful start the server logs:
 
 ```
-2024-12-04 14:32:45.584 [main] INFO  Application - Application started in 0.303 seconds.
-2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
+Application - Application started in ... seconds.
+Application - Responding at http://127.0.0.1:8081
 ```
 
+## Configuration
+
+Configuration lives in `src/main/resources/application.yaml` (production) and `application-dev.yaml` (local development):
+
+| Key | Production | Dev |
+|-----|------------|-----|
+| `ktor.deployment.host` | `127.0.0.1` | not set (`0.0.0.0` default) |
+| `ktor.deployment.port` | `8081` | `8081` |
+| `wordme.words_db.path` | `/opt/wordme/data/words.db` | `data/words.db` |
+| `wordme.ids_db.path` | `/opt/wordme/data/ids.db` | `data/ids.db` |
+| `wordme.game_countdown_start_date` | `14.07.2025` | `14.07.2025` |
+
+`data/` is gitignored; local SQLite files live there in dev.
+
+## Project structure
+
+```
+src/main/kotlin/
+├── Application.kt              # Entry point (EngineMain) and module wiring
+├── Routing.kt                  # HTTP routes
+├── DayWordAccess.kt            # Day-availability gating
+├── Serialization.kt            # ContentNegotiation + JSON
+├── db/
+│   ├── IdsDatabaseFactory.kt   # ids.db — day → word mapping
+│   └── WordsDatabaseFactory.kt # words.db — the words
+├── dto/
+│   └── Dtos.kt                 # WordDto(id, word, isUndesirable)
+└── repository/
+    └── WordsRepository.kt      # Day-word selection and word lookup
+```
+
+## Deployment
+
+Production runs on an Ubuntu 24.04 VPS (`wordme.duckdns.org`) behind nginx. The nginx, systemd, and backup files are kept in [`deploy/`](deploy/README.md), which also documents the deploy steps and the server↔repo file mapping.
